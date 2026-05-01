@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.0.2 - 2026-05-01
+
+### Features
+- Add `notification.on_open` and `notification.on_close` hooks and forward them to `nvim-notify`
+
+### Documentation
+- Document notification lifecycle hooks in the README and help docs
+
 ## 0.0.1 - 2026-05-01
 
 ### Features
