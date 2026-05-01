@@ -21,10 +21,22 @@ assert(vim.fn.exists(":LspProgressNotifyEnable") == 2, "enable command missing")
 assert(vim.fn.exists(":LspProgressNotifyDisable") == 2, "disable command missing")
 assert(vim.fn.exists(":LspProgressNotifyToggle") == 2, "toggle command missing")
 
+local opened = 0
+local closed = 0
+local function on_open()
+  opened = opened + 1
+end
+
+local function on_close()
+  closed = closed + 1
+end
+
 progress.setup({
   enabled = false,
   notification = {
     done_timeout = 20,
+    on_open = on_open,
+    on_close = on_close,
   },
 })
 
@@ -101,6 +113,13 @@ assert(
 
 local events = _G.__lsp_progress_notify_events or {}
 assert(#events >= 3, "notify should have been called multiple times")
+assert(events[1].opts.on_open == on_open, "on_open should be forwarded to notify")
+assert(events[1].opts.on_close == on_close, "on_close should be forwarded to notify")
+
+events[1].opts.on_open()
+events[1].opts.on_close()
+assert(opened == 1, "on_open callback should remain callable")
+assert(closed == 1, "on_close callback should remain callable")
 
 vim.cmd("LspProgressNotifyDisable")
 assert(progress.is_enabled() == false, "plugin should be disabled")

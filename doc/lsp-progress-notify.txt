@@ -84,6 +84,8 @@ Default configuration: >lua
       done_timeout = 2000,
       render = "default",
       stages = "fade",
+      on_open = nil,
+      on_close = nil,
     },
     title = function(client_name, task)
       return client_name
@@ -108,6 +110,8 @@ Options overview:
   notification.done_timeout                Timeout after completion.
   notification.render                      Passed to nvim-notify.
   notification.stages                      Passed to nvim-notify.
+  notification.on_open                     Open callback passed to nvim-notify.
+  notification.on_close                    Close callback passed to nvim-notify.
   title(client_name, task)                 Notification title callback.
   format(client_name, task)                Notification body callback.
 

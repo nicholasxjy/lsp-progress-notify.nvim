@@ -114,6 +114,8 @@ require("lsp-progress-notify").setup({
     done_timeout = 2000,
     render = "default",
     stages = "fade",
+    on_open = nil,
+    on_close = nil,
   },
   title = function(client_name, task)
     return client_name
@@ -170,7 +172,24 @@ require("lsp-progress-notify").setup({
 })
 ```
 
-### 3. Custom message format
+### 3. Run hooks when notifications open/close
+
+```lua
+require("lsp-progress-notify").setup({
+  notification = {
+    on_open = function(win)
+      vim.wo[win].conceallevel = 0
+    end,
+    on_close = function()
+      vim.schedule(function()
+        vim.notify("LSP progress closed")
+      end)
+    end,
+  },
+})
+```
+
+### 4. Custom message format
 
 ```lua
 require("lsp-progress-notify").setup({

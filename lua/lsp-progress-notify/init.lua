@@ -20,6 +20,8 @@ local defaults = {
     done_timeout = 2000,
     render = "default",
     stages = "fade",
+    on_open = nil,
+    on_close = nil,
   },
 }
 
@@ -155,6 +157,8 @@ local function show_task(task)
     replace = task.notification,
     render = M.config.notification.render,
     stages = M.config.notification.stages,
+    on_open = M.config.notification.on_open,
+    on_close = M.config.notification.on_close,
     hide_from_history = not task.done,
   })
 end
