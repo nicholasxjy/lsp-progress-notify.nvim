@@ -36,13 +36,14 @@ This repository includes:
 
 - `plugin/lsp-progress-notify.lua`: registers user commands
 - `doc/lsp-progress-notify.txt`: `:help lsp-progress-notify`
-- `lsp-progress-notify.nvim-scm-1.rockspec`: for `luarocks` / `rocks.nvim`
+- `lsp-progress-notify.nvim-scm-1.rockspec`: development rockspec
+- `lsp-progress-notify.nvim-0.0.1-1.rockspec`: release rockspec for `luarocks` / `rocks.nvim`
 
 ### lazy.nvim
 
 ```lua
 {
-  "jy/lsp-progress-notify.nvim",
+  "nicholasxjy/lsp-progress-notify.nvim",
   dependencies = {
     "rcarriga/nvim-notify",
   },
@@ -68,7 +69,7 @@ If you also want to route global `vim.notify` calls through `nvim-notify`:
 ```lua
 vim.pack.add({
   "https://github.com/rcarriga/nvim-notify",
-  "https://github.com/jy/lsp-progress-notify.nvim",
+  "https://github.com/nicholasxjy/lsp-progress-notify.nvim",
 })
 
 vim.notify = require("notify")
@@ -87,7 +88,7 @@ If you use `rocks.nvim` or `luarocks`, the repository also ships a rockspec:
 
 ```lua
 {
-  "jy/lsp-progress-notify.nvim",
+  "nicholasxjy/lsp-progress-notify.nvim",
   rocks = { "lsp-progress-notify.nvim" },
 }
 ```

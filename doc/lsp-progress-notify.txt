@@ -34,7 +34,7 @@ INSTALLATION                                            *lsp-progress-notify-ins
 
 Example with lazy.nvim: >lua
   {
-    "jy/lsp-progress-notify.nvim",
+    "nicholasxjy/lsp-progress-notify.nvim",
     dependencies = {
       "rcarriga/nvim-notify",
     },
