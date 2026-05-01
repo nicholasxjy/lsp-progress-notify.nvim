@@ -1,40 +1,40 @@
 # lsp-progress-notify.nvim
 
-[![ci](https://github.com/jy/lsp-progress-notify.nvim/actions/workflows/ci.yml/badge.svg)](https://github.com/jy/lsp-progress-notify.nvim/actions/workflows/ci.yml)
-[![stylua](https://github.com/jy/lsp-progress-notify.nvim/actions/workflows/stylua.yml/badge.svg)](https://github.com/jy/lsp-progress-notify.nvim/actions/workflows/stylua.yml)
-[![license](https://img.shields.io/github/license/jy/lsp-progress-notify.nvim)](./LICENSE)
+[![ci](https://github.com/nicholasxjy/lsp-progress-notify.nvim/actions/workflows/ci.yml/badge.svg)](https://github.com/nicholasxjy/lsp-progress-notify.nvim/actions/workflows/ci.yml)
+[![stylua](https://github.com/nicholasxjy/lsp-progress-notify.nvim/actions/workflows/stylua.yml/badge.svg)](https://github.com/nicholasxjy/lsp-progress-notify.nvim/actions/workflows/stylua.yml)
+[![license](https://img.shields.io/github/license/nicholasxjy/lsp-progress-notify.nvim)](./LICENSE)
 [![neovim](https://img.shields.io/badge/Neovim-0.11%2B-57A143?logo=neovim&logoColor=white)](https://neovim.io/)
 
-一个基于 [rcarriga/nvim-notify](https://github.com/rcarriga/nvim-notify) 的 Neovim 插件，用通知窗口显示 LSP client 的加载 / 索引 / 初始化进度。
+A Neovim plugin built on top of [rcarriga/nvim-notify](https://github.com/rcarriga/nvim-notify) to display LSP client loading, indexing, and initialization progress in notification windows.
 
-它基于 Neovim 0.11+ 的 `LspProgress` autocmd，在 `begin/report/end` 三个阶段自动更新同一条通知，而不是反复弹出一堆新消息。
+It uses Neovim 0.11+'s `LspProgress` autocmd and updates the same notification across the `begin` / `report` / `end` lifecycle, instead of spamming a new popup for every progress event.
 
-## 功能
+## Features
 
-- 使用 `nvim-notify` 展示 LSP 进度
-- 同一个任务只更新一条通知
-- 支持多个 LSP client 并发显示
-- 支持 spinner 动画
-- client detach 时自动收尾
-- 仅支持 Neovim 0.11+
-- 基于 `LspProgress` autocmd 实现
+- Display LSP progress with `nvim-notify`
+- Reuse a single notification for the same task
+- Support concurrent progress from multiple LSP clients
+- Animated spinner support
+- Automatically finalize notifications when a client detaches
+- Neovim 0.11+ only
+- Implemented on top of the `LspProgress` autocmd
 
-## 要求
+## Requirements
 
-- **Neovim 0.11 及以上**
+- **Neovim 0.11 or later**
 - [rcarriga/nvim-notify](https://github.com/rcarriga/nvim-notify)
 
-> 本插件**不支持 Neovim 0.10 及以下版本**。
+> This plugin does **not** support Neovim 0.10 or earlier.
 
-## 安装
+## Installation
 
-请确认你的 Neovim 版本为 `0.11+`，否则插件不会工作。
+Make sure you are using Neovim `0.11+`, otherwise the plugin will not work.
 
-仓库现在包含：
+This repository includes:
 
-- `plugin/lsp-progress-notify.lua`：注册用户命令
-- `doc/lsp-progress-notify.txt`：`:help lsp-progress-notify`
-- `lsp-progress-notify.nvim-scm-1.rockspec`：luarocks / rocks.nvim 用
+- `plugin/lsp-progress-notify.lua`: registers user commands
+- `doc/lsp-progress-notify.txt`: `:help lsp-progress-notify`
+- `lsp-progress-notify.nvim-scm-1.rockspec`: for `luarocks` / `rocks.nvim`
 
 ### lazy.nvim
 
@@ -50,7 +50,7 @@
 }
 ```
 
-如果你希望全局 `vim.notify` 也交给 `nvim-notify`：
+If you also want to route global `vim.notify` calls through `nvim-notify`:
 
 ```lua
 {
@@ -61,7 +61,36 @@
 }
 ```
 
-## 默认配置
+### vim.pack
+
+```lua
+vim.pack.add({
+  "https://github.com/rcarriga/nvim-notify",
+  "https://github.com/jy/lsp-progress-notify.nvim",
+})
+
+vim.notify = require("notify")
+require("lsp-progress-notify").setup()
+```
+
+After adding new plugins with `vim.pack`, restart Neovim. If needed, run:
+
+```vim
+:lua vim.pack.update()
+```
+
+### rocks.nvim / luarocks
+
+If you use `rocks.nvim` or `luarocks`, the repository also ships a rockspec:
+
+```lua
+{
+  "jy/lsp-progress-notify.nvim",
+  rocks = { "lsp-progress-notify.nvim" },
+}
+```
+
+## Default configuration
 
 ```lua
 require("lsp-progress-notify").setup({
@@ -116,9 +145,9 @@ require("lsp-progress-notify").setup({
 })
 ```
 
-## 自定义示例
+## Customization examples
 
-### 1. 更紧凑的标题
+### 1. More compact title
 
 ```lua
 require("lsp-progress-notify").setup({
@@ -128,7 +157,7 @@ require("lsp-progress-notify").setup({
 })
 ```
 
-### 2. 完成后更快消失
+### 2. Hide completed notifications faster
 
 ```lua
 require("lsp-progress-notify").setup({
@@ -138,7 +167,7 @@ require("lsp-progress-notify").setup({
 })
 ```
 
-### 3. 自定义消息格式
+### 3. Custom message format
 
 ```lua
 require("lsp-progress-notify").setup({
@@ -152,37 +181,38 @@ require("lsp-progress-notify").setup({
 })
 ```
 
-## 命令
+## Commands
 
-插件启动后会注册以下命令：
+After startup, the plugin registers these commands:
 
 - `:LspProgressNotifyEnable`
 - `:LspProgressNotifyDisable`
 - `:LspProgressNotifyToggle`
 
-## 帮助文档
+## Help
 
-安装后可执行：
+After installation, you can run:
 
 ```vim
 :helptags ALL
 :help lsp-progress-notify
 ```
 
-## 健康检查
+## Health check
 
-插件提供了 health check：
+The plugin provides a health check:
 
 ```vim
 :checkhealth lsp-progress-notify
 ```
 
-会检查：
-- Neovim 版本是否为 `0.11+`
-- `nvim-notify` 是否可用
-- 用户命令是否已注册
+It checks:
 
-## 导出 API
+- whether your Neovim version is `0.11+`
+- whether `nvim-notify` is available
+- whether the user commands were registered
+
+## Exported API
 
 ```lua
 local progress = require("lsp-progress-notify")
@@ -194,59 +224,48 @@ progress.is_enabled()
 progress.status()
 ```
 
-`status()` 会返回当前追踪中的任务快照，方便调试。
+`status()` returns a snapshot of the currently tracked tasks, which is useful for debugging.
 
-## 版本兼容性
+## Version compatibility
 
-- 支持：Neovim `>= 0.11`
-- 不支持：Neovim `0.10.x`、`0.9.x` 及更早版本
+- Supported: Neovim `>= 0.11`
+- Not supported: Neovim `0.10.x`, `0.9.x`, and earlier
 
-本插件不再包含旧版 `$/progress` handler fallback，统一使用 `LspProgress` autocmd。
+This plugin no longer includes the legacy `$/progress` handler fallback, and uses the `LspProgress` autocmd exclusively.
 
-## 工作原理
+## How it works
 
-插件会跟踪每个 LSP client 的 progress token：
+The plugin tracks each LSP client's progress token:
 
-- `begin`：创建通知
-- `report`：替换旧通知内容
-- `end`：将 spinner 换成完成图标，并在 `done_timeout` 后关闭
+- `begin`: create a notification
+- `report`: replace the previous notification content
+- `end`: switch the spinner to the done icon, then close after `done_timeout`
 
-所以像 `lua_ls`、`rust_analyzer`、`tsserver`、`gopls` 这类会发送工作进度的服务，都可以直接显示出加载状态。
+So language servers such as `lua_ls`, `rust_analyzer`, `tsserver`, and `gopls` that report work progress can show their loading state directly.
 
-## 开发
+## Development
 
-仓库包含：
+The repository includes:
 
-- `tests/smoke.lua`：headless smoke test
-- `.github/workflows/ci.yml`：GitHub Actions smoke test
-- `.github/workflows/stylua.yml`：格式检查
-- `.stylua.toml`：StyLua 配置
-- `.luarc.json`：LuaLS 配置
-- `CONTRIBUTING.md`：开发说明
+- `tests/smoke.lua`: headless smoke test
+- `.github/workflows/ci.yml`: GitHub Actions smoke test
+- `.github/workflows/stylua.yml`: formatting check
+- `.stylua.toml`: StyLua configuration
+- `.luarc.json`: LuaLS configuration
+- `CONTRIBUTING.md`: development notes
 
-本地测试：
+Local test:
 
 ```bash
 nvim --headless -u NONE -c "lua dofile('tests/smoke.lua')" -c qa
 ```
 
-本地格式检查：
+Local formatting check:
 
 ```bash
 stylua --check .
 ```
 
-## Rocks 安装
-
-如果你使用 `rocks.nvim` / `luarocks`，仓库也提供了 rockspec：
-
-```lua
-{
-  "jy/lsp-progress-notify.nvim",
-  rocks = { "lsp-progress-notify.nvim" },
-}
-```
-
-## 许可证
+## License
 
 MIT
