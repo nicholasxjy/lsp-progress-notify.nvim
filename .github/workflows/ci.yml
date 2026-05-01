@@ -1,0 +1,24 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Neovim
+        uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+          version: v0.11.0
+
+      - name: Show version
+        run: nvim --version | head -n 5
+
+      - name: Run smoke tests
+        run: nvim --headless -u NONE -c "lua dofile('tests/smoke.lua')" -c qa

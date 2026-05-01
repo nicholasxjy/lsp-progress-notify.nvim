@@ -1,0 +1,155 @@
+*lsp-progress-notify.nvim* *lsp-progress-notify* *LspProgressNotify*
+
+==============================================================================
+CONTENTS                                                    *lsp-progress-notify-contents*
+
+  1. Introduction ................................. |lsp-progress-notify-introduction|
+  2. Requirements ................................. |lsp-progress-notify-requirements|
+  3. Installation ................................ |lsp-progress-notify-installation|
+  4. Setup ....................................... |lsp-progress-notify-setup|
+  5. Configuration ............................... |lsp-progress-notify-configuration|
+  6. Health ...................................... |lsp-progress-notify-health|
+  7. Commands .................................... |lsp-progress-notify-commands|
+  8. API ......................................... |lsp-progress-notify-api|
+
+==============================================================================
+INTRODUCTION                                            *lsp-progress-notify-introduction*
+
+lsp-progress-notify.nvim shows LSP progress using
+https://github.com/rcarriga/nvim-notify.
+
+It is implemented on top of Neovim 0.11+ |LspProgress| autocmds and updates the
+same notification for each progress token across the begin/report/end phases.
+
+==============================================================================
+REQUIREMENTS                                            *lsp-progress-notify-requirements*
+
+- Neovim >= 0.11
+- rcarriga/nvim-notify
+
+This plugin does not support Neovim 0.10 or older.
+
+==============================================================================
+INSTALLATION                                            *lsp-progress-notify-installation*
+
+Example with lazy.nvim: >lua
+  {
+    "jy/lsp-progress-notify.nvim",
+    dependencies = {
+      "rcarriga/nvim-notify",
+    },
+    config = function()
+      require("lsp-progress-notify").setup()
+    end,
+  }
+<
+
+Optional notify override: >lua
+  {
+    "rcarriga/nvim-notify",
+    config = function()
+      vim.notify = require("notify")
+    end,
+  }
+<
+
+==============================================================================
+SETUP                                                          *lsp-progress-notify-setup*
+
+Call `setup()` once: >lua
+  require("lsp-progress-notify").setup()
+<
+
+If Neovim is older than 0.11, `setup()` throws an error.
+
+==============================================================================
+CONFIGURATION                                        *lsp-progress-notify-configuration*
+
+Default configuration: >lua
+  require("lsp-progress-notify").setup({
+    enabled = true,
+    spinner_interval = 120,
+    icons = {
+      spinner = { "⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏" },
+      done = "",
+    },
+    messages = {
+      complete = "Completed",
+      detached = "Detached",
+      working = "Working…",
+    },
+    notification = {
+      level = vim.log.levels.INFO,
+      ongoing_timeout = false,
+      done_timeout = 2000,
+      render = "default",
+      stages = "fade",
+    },
+    title = function(client_name, task)
+      return client_name
+    end,
+    format = function(client_name, task)
+      -- Return notification body text
+    end,
+  })
+<
+
+Options overview:
+
+  enabled                                  Enable on setup.
+  spinner_interval                         Spinner refresh interval in ms.
+  icons.spinner                            Spinner frames.
+  icons.done                               Icon used after completion.
+  messages.complete                        Fallback completion message.
+  messages.detached                        Message used on |LspDetach|.
+  messages.working                         Fallback in-progress message.
+  notification.level                       Notify log level.
+  notification.ongoing_timeout             Timeout while task is active.
+  notification.done_timeout                Timeout after completion.
+  notification.render                      Passed to nvim-notify.
+  notification.stages                      Passed to nvim-notify.
+  title(client_name, task)                 Notification title callback.
+  format(client_name, task)                Notification body callback.
+
+==============================================================================
+HEALTH                                                        *lsp-progress-notify-health*
+
+Run: >vim
+  :checkhealth lsp-progress-notify
+<
+
+The health check reports:
+
+- whether Neovim is at least 0.11
+- whether `rcarriga/nvim-notify` can be required
+- whether plugin user commands are registered
+
+==============================================================================
+COMMANDS                                                    *lsp-progress-notify-commands*
+
+:LspProgressNotifyEnable
+    Enable progress notifications.
+
+:LspProgressNotifyDisable
+    Disable progress notifications and clear tracked state.
+
+:LspProgressNotifyToggle
+    Toggle progress notifications.
+
+==============================================================================
+API                                                              *lsp-progress-notify-api*
+
+>lua
+  local progress = require("lsp-progress-notify")
+
+  progress.setup(opts)
+  progress.enable()
+  progress.disable()
+  progress.is_enabled()
+  progress.status()
+<
+
+`status()` returns a snapshot of currently tracked tasks.
+
+==============================================================================
+vim:tw=78:ts=8:noet:ft=help:norl:
