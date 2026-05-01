@@ -145,7 +145,8 @@ end
 local function show_task(task)
   local notify = get_notify()
   local icon = task.done and M.config.icons.done or current_spinner_icon()
-  local timeout = task.done and M.config.notification.done_timeout or M.config.notification.ongoing_timeout
+  local timeout = task.done and M.config.notification.done_timeout
+    or M.config.notification.ongoing_timeout
 
   task.notification = notify(M.config.format(task.client_name, task), M.config.notification.level, {
     title = M.config.title(task.client_name, task),
@@ -344,7 +345,6 @@ function M.disable()
     pcall(vim.api.nvim_del_augroup_by_id, state.augroup)
     state.augroup = nil
   end
-
 end
 
 function M.is_enabled()

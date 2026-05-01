@@ -21,7 +21,9 @@ function M.check()
   if vim.fn.exists(":LspProgressNotifyEnable") == 2 then
     health.ok("User commands are registered")
   else
-    health.info("User commands are not registered yet; add the plugin to 'runtimepath' or load it through your plugin manager")
+    health.info(
+      "User commands are not registered yet; add the plugin to 'runtimepath' or load it through your plugin manager"
+    )
   end
 end
 

@@ -9,6 +9,8 @@ A Neovim plugin built on top of [rcarriga/nvim-notify](https://github.com/rcarri
 
 It uses Neovim 0.11+'s `LspProgress` autocmd and updates the same notification across the `begin` / `report` / `end` lifecycle, instead of spamming a new popup for every progress event.
 
+![demo](./demo.gif)
+
 ## Features
 
 - Display LSP progress with `nvim-notify`

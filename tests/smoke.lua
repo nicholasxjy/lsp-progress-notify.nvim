@@ -92,9 +92,12 @@ task = snapshot["1:\"token-1\""]
 assert(task.done == true, "task should be marked done")
 assert(task.message == "Done", "end message mismatch")
 
-assert(vim.wait(200, function()
-  return next(progress.status()) == nil
-end), "completed task should be cleaned up")
+assert(
+  vim.wait(200, function()
+    return next(progress.status()) == nil
+  end),
+  "completed task should be cleaned up"
+)
 
 local events = _G.__lsp_progress_notify_events or {}
 assert(#events >= 3, "notify should have been called multiple times")
