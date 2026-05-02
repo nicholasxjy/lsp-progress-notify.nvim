@@ -59,9 +59,15 @@ vim.api.nvim_exec_autocmds("LspProgress", {
   },
 })
 
+assert(
+  vim.wait(200, function()
+    return progress.status()["1:\"token-1\""] ~= nil
+  end),
+  "task should be created on begin"
+)
+
 local snapshot = progress.status()
 local task = snapshot["1:\"token-1\""]
-assert(task ~= nil, "task should be created on begin")
 assert(task.title == "Indexing", "task title mismatch")
 assert(task.message == "Scanning workspace", "task message mismatch")
 assert(task.percentage == 5, "task percentage mismatch")
@@ -81,6 +87,14 @@ vim.api.nvim_exec_autocmds("LspProgress", {
   },
 })
 
+assert(
+  vim.wait(200, function()
+    local current = progress.status()["1:\"token-1\""]
+    return current and current.message == "Halfway there" and current.percentage == 50
+  end),
+  "task report should update state"
+)
+
 snapshot = progress.status()
 task = snapshot["1:\"token-1\""]
 assert(task.message == "Halfway there", "task report should update message")
@@ -98,6 +112,14 @@ vim.api.nvim_exec_autocmds("LspProgress", {
     },
   },
 })
+
+assert(
+  vim.wait(200, function()
+    local current = progress.status()["1:\"token-1\""]
+    return current and current.done == true and current.message == "Done"
+  end),
+  "task should be marked done"
+)
 
 snapshot = progress.status()
 task = snapshot["1:\"token-1\""]

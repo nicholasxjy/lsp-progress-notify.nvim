@@ -103,10 +103,10 @@ local function get_notify()
   local ok, notify = pcall(require, "notify")
 
   if ok then
-    return notify
+    return notify, true
   end
 
-  return vim.notify
+  return vim.notify, false
 end
 
 local function active_task_count()
@@ -145,21 +145,31 @@ local function schedule_cleanup(key, delay)
 end
 
 local function show_task(task)
-  local notify = get_notify()
+  local notify, is_nvim_notify = get_notify()
   local icon = task.done and M.config.icons.done or current_spinner_icon()
   local timeout = task.done and M.config.notification.done_timeout
     or M.config.notification.ongoing_timeout
+  local message = M.config.format(task.client_name, task)
+  local title = M.config.title(task.client_name, task)
 
-  task.notification = notify(M.config.format(task.client_name, task), M.config.notification.level, {
-    title = M.config.title(task.client_name, task),
-    icon = icon,
+  if is_nvim_notify then
+    task.notification = notify(message, M.config.notification.level, {
+      title = title,
+      icon = icon,
+      timeout = timeout,
+      replace = task.notification,
+      render = M.config.notification.render,
+      stages = M.config.notification.stages,
+      on_open = M.config.notification.on_open,
+      on_close = M.config.notification.on_close,
+      hide_from_history = not task.done,
+    })
+    return
+  end
+
+  task.notification = notify(message, M.config.notification.level, {
+    title = title,
     timeout = timeout,
-    replace = task.notification,
-    render = M.config.notification.render,
-    stages = M.config.notification.stages,
-    on_open = M.config.notification.on_open,
-    on_close = M.config.notification.on_close,
-    hide_from_history = not task.done,
   })
 end
 
@@ -307,7 +317,13 @@ local function setup_autocmds()
     callback = function(event)
       local data = event.data or {}
       local params = data.params or {}
-      handle_progress(data.client_id, params.token, params.value)
+      local client_id = data.client_id
+      local token = params.token
+      local value = params.value and vim.deepcopy(params.value) or nil
+
+      vim.schedule(function()
+        handle_progress(client_id, token, value)
+      end)
     end,
     desc = "Show LSP progress through nvim-notify",
   })
@@ -316,8 +332,12 @@ local function setup_autocmds()
     group = state.augroup,
     callback = function(event)
       local data = event.data or {}
-      if data.client_id then
-        clear_client_tasks(data.client_id)
+      local client_id = data.client_id
+
+      if client_id then
+        vim.schedule(function()
+          clear_client_tasks(client_id)
+        end)
       end
     end,
     desc = "Clear LSP progress notifications for detached clients",
