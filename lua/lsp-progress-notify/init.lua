@@ -28,6 +28,7 @@ local defaults = {
 local state = {
   enabled = false,
   tasks = {},
+  client_notifications = {},
   spinner_frame = 1,
   timer = nil,
   augroup = nil,
@@ -135,39 +136,82 @@ local function current_spinner_icon()
   return frames[state.spinner_frame]
 end
 
-local function schedule_cleanup(key, delay)
+local function schedule_cleanup(key, client_id, delay)
   vim.defer_fn(function()
     local task = state.tasks[key]
     if task and task.done then
       state.tasks[key] = nil
     end
+    local remaining = false
+    for _, t in pairs(state.tasks) do
+      if t.client_id == client_id then
+        remaining = true
+        break
+      end
+    end
+    if not remaining then
+      state.client_notifications[tostring(client_id)] = nil
+    end
   end, delay)
 end
 
-local function show_task(task)
+local function get_client_tasks(client_id)
+  local tasks = {}
+  for _, task in pairs(state.tasks) do
+    if task.client_id == client_id then
+      table.insert(tasks, task)
+    end
+  end
+  table.sort(tasks, function(a, b)
+    return tostring(a.token) < tostring(b.token)
+  end)
+  return tasks
+end
+
+local function show_client(client_id)
+  local tasks = get_client_tasks(client_id)
+  if #tasks == 0 then
+    return
+  end
+
   local notify, is_nvim_notify = get_notify()
-  local icon = task.done and M.config.icons.done or current_spinner_icon()
-  local timeout = task.done and M.config.notification.done_timeout
-    or M.config.notification.ongoing_timeout
-  local message = M.config.format(task.client_name, task)
-  local title = M.config.title(task.client_name, task)
+  local client = vim.lsp.get_client_by_id(client_id)
+  local client_name = client and client.name or string.format("LSP %d", client_id)
+
+  local all_done = true
+  local lines = {}
+  local spinner = current_spinner_icon()
+  for _, task in ipairs(tasks) do
+    if not task.done then
+      all_done = false
+    end
+    local icon = task.done and M.config.icons.done or spinner
+    local msg = M.config.format(task.client_name, task)
+    table.insert(lines, icon .. " " .. msg)
+  end
+
+  local message = table.concat(lines, "\n")
+  local title = M.config.title(client_name)
+  local icon = all_done and M.config.icons.done or spinner
+  local timeout = all_done and M.config.notification.done_timeout or M.config.notification.ongoing_timeout
+  local existing = state.client_notifications[tostring(client_id)]
 
   if is_nvim_notify then
-    task.notification = notify(message, M.config.notification.level, {
+    state.client_notifications[tostring(client_id)] = notify(message, M.config.notification.level, {
       title = title,
       icon = icon,
       timeout = timeout,
-      replace = task.notification,
+      replace = existing,
       render = M.config.notification.render,
       stages = M.config.notification.stages,
       on_open = M.config.notification.on_open,
       on_close = M.config.notification.on_close,
-      hide_from_history = not task.done,
+      hide_from_history = not all_done,
     })
     return
   end
 
-  task.notification = notify(message, M.config.notification.level, {
+  state.client_notifications[tostring(client_id)] = notify(message, M.config.notification.level, {
     title = title,
     timeout = timeout,
   })
@@ -198,10 +242,14 @@ local function ensure_timer()
 
       next_spinner_icon()
 
+      local client_ids = {}
       for _, task in pairs(state.tasks) do
         if not task.done then
-          show_task(task)
+          client_ids[task.client_id] = true
         end
+      end
+      for client_id in pairs(client_ids) do
+        show_client(client_id)
       end
     end)
   )
@@ -220,8 +268,8 @@ local function finish_task(task, key, message)
     task.message = M.config.messages.complete
   end
 
-  show_task(task)
-  schedule_cleanup(key, M.config.notification.done_timeout or 1000)
+  show_client(task.client_id)
+  schedule_cleanup(key, task.client_id, M.config.notification.done_timeout or 1000)
 
   if active_task_count() == 0 then
     stop_timer()
@@ -247,7 +295,6 @@ local function handle_progress(client_id, token, value)
       message = nil,
       percentage = nil,
       done = false,
-      notification = nil,
     }
     state.tasks[key] = task
   end
@@ -272,7 +319,7 @@ local function handle_progress(client_id, token, value)
   end
 
   task.done = false
-  show_task(task)
+  show_client(client_id)
   ensure_timer()
 end
 
@@ -364,6 +411,7 @@ function M.disable()
   state.enabled = false
   stop_timer()
   state.tasks = {}
+  state.client_notifications = {}
 
   if state.augroup then
     pcall(vim.api.nvim_del_augroup_by_id, state.augroup)
