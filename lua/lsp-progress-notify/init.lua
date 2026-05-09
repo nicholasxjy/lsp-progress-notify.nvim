@@ -163,7 +163,7 @@ local function get_client_tasks(client_id)
     end
   end
   table.sort(tasks, function(a, b)
-    return tostring(a.token) < tostring(b.token)
+    return (a.seq or 0) < (b.seq or 0)
   end)
   return tasks
 end
@@ -186,7 +186,7 @@ local function show_client(client_id)
       all_done = false
     end
     local icon = task.done and M.config.icons.done or spinner
-    local msg = M.config.format(task.client_name, task)
+    local msg = M.config.format(client_name, task)
     table.insert(lines, icon .. " " .. msg)
   end
 
@@ -295,7 +295,9 @@ local function handle_progress(client_id, token, value)
       message = nil,
       percentage = nil,
       done = false,
+      seq = (state.task_seq or 0) + 1,
     }
+    state.task_seq = task.seq
     state.tasks[key] = task
   end
 
@@ -411,6 +413,7 @@ function M.disable()
   state.enabled = false
   stop_timer()
   state.tasks = {}
+  state.task_seq = 0
   state.client_notifications = {}
 
   if state.augroup then
