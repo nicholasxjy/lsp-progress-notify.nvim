@@ -37,7 +37,7 @@ This repository includes:
 - `plugin/lsp-progress-notify.lua`: registers user commands
 - `doc/lsp-progress-notify.txt`: `:help lsp-progress-notify`
 - `lsp-progress-notify.nvim-scm-1.rockspec`: development rockspec
-- `lsp-progress-notify.nvim-0.0.2-1.rockspec`: release rockspec for `luarocks` / `rocks.nvim`
+- `lsp-progress-notify.nvim-0.0.3-1.rockspec`: release rockspec for `luarocks` / `rocks.nvim`
 
 ### lazy.nvim
 

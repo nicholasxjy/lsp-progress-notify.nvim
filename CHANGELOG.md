@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.0.3 - 2026-05-09
+
+### Performance
+- Optimize progress task key generation for common token types
+
+### Tests
+- Cover numeric LSP progress tokens in the smoke test suite
+
 ## 0.0.2 - 2026-05-01
 
 ### Features
