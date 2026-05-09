@@ -126,6 +126,53 @@ task = snapshot["1:\"token-1\""]
 assert(task.done == true, "task should be marked done")
 assert(task.message == "Done", "end message mismatch")
 
+vim.api.nvim_exec_autocmds("LspProgress", {
+  data = {
+    client_id = 2,
+    params = {
+      token = 42,
+      value = {
+        kind = "begin",
+        title = "Compiling",
+        message = "Building modules",
+      },
+    },
+  },
+})
+
+assert(
+  vim.wait(200, function()
+    return progress.status()["2:42"] ~= nil
+  end),
+  "numeric token should produce a stable key"
+)
+
+snapshot = progress.status()
+task = snapshot["2:42"]
+assert(task.title == "Compiling", "numeric token task title mismatch")
+assert(task.message == "Building modules", "numeric token task message mismatch")
+assert(task.done == false, "numeric token task should be active")
+
+vim.api.nvim_exec_autocmds("LspProgress", {
+  data = {
+    client_id = 2,
+    params = {
+      token = 42,
+      value = {
+        kind = "end",
+      },
+    },
+  },
+})
+
+assert(
+  vim.wait(200, function()
+    local current = progress.status()["2:42"]
+    return current and current.done == true and current.message == "Building modules"
+  end),
+  "numeric token task should complete"
+)
+
 assert(
   vim.wait(200, function()
     return next(progress.status()) == nil

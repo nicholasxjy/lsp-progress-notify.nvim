@@ -193,7 +193,8 @@ local function show_client(client_id)
   local message = table.concat(lines, "\n")
   local title = M.config.title(client_name)
   local icon = all_done and M.config.icons.done or spinner
-  local timeout = all_done and M.config.notification.done_timeout or M.config.notification.ongoing_timeout
+  local timeout = all_done and M.config.notification.done_timeout
+    or M.config.notification.ongoing_timeout
   local existing = state.client_notifications[tostring(client_id)]
 
   if is_nvim_notify then
@@ -255,8 +256,22 @@ local function ensure_timer()
   )
 end
 
+local function serialize_token(token)
+  local token_type = type(token)
+
+  if token_type == "string" then
+    return string.format("%q", token)
+  end
+
+  if token_type == "number" or token_type == "boolean" or token == nil then
+    return tostring(token)
+  end
+
+  return vim.inspect(token)
+end
+
 local function make_key(client_id, token)
-  return string.format("%s:%s", client_id, vim.inspect(token))
+  return tostring(client_id) .. ":" .. serialize_token(token)
 end
 
 local function finish_task(task, key, message)
