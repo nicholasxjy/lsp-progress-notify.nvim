@@ -11,9 +11,7 @@ It uses Neovim 0.11+'s `LspProgress` autocmd and updates the same notification a
 
 ## Demo
 
-<video src="./assets/demo.mp4" controls muted loop width="100%">
-  Your browser does not support the video tag. You can also <a href="./assets/demo.mp4">download the demo video</a>.
-</video>
+![demo](./assets/demo.gif)
 
 ## Features
 
