@@ -9,7 +9,11 @@ A Neovim plugin built on top of [rcarriga/nvim-notify](https://github.com/rcarri
 
 It uses Neovim 0.11+'s `LspProgress` autocmd and updates the same notification across the `begin` / `report` / `end` lifecycle, instead of spamming a new popup for every progress event.
 
-![demo](./demo.gif)
+## Demo
+
+<video src="./assets/demo.mp4" controls muted loop width="100%">
+  Your browser does not support the video tag. You can also <a href="./assets/demo.mp4">download the demo video</a>.
+</video>
 
 ## Features
 
