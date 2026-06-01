@@ -507,8 +507,7 @@ local function show_client(client_id)
       window_config(width, height, M.config.notification.row)
     )
     vim.wo[notification.win].winblend = M.config.notification.winblend
-    vim.wo[notification.win].winhighlight =
-      "Normal:LspProgressNotifyNormal,FloatBorder:LspProgressNotifyBorder"
+    vim.wo[notification.win].winhighlight = "Normal:NormalFloat,FloatBorder:FloatBorder"
 
     if M.config.notification.on_open then
       pcall(M.config.notification.on_open, notification.win)
