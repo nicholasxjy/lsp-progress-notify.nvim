@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+- Replace the `nvim-notify` backend with native Neovim floating windows.
+- Add floating window layout options for width, position, stacking, border, z-index, and blend.
+
 ## 0.0.3 - 2026-05-09
 
 ### Performance

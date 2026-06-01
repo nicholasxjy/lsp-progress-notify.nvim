@@ -11,18 +11,14 @@ function M.check()
     health.error("Neovim 0.11+ is required")
   end
 
-  local ok = pcall(require, "notify")
-  if ok then
-    health.ok("rcarriga/nvim-notify is available")
-  else
-    health.warn("rcarriga/nvim-notify is not available; plugin will fall back to vim.notify")
-  end
+  health.ok("No external notification dependency is required")
 
   if vim.fn.exists(":LspProgressNotifyEnable") == 2 then
     health.ok("User commands are registered")
   else
     health.info(
-      "User commands are not registered yet; add the plugin to 'runtimepath' or load it through your plugin manager"
+      "User commands are not registered yet; add the plugin to 'runtimepath' "
+        .. "or load it through your plugin manager"
     )
   end
 end

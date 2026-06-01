@@ -1,14 +1,5 @@
 package.preload["notify"] = function()
-  return function(message, level, opts)
-    _G.__lsp_progress_notify_events = _G.__lsp_progress_notify_events or {}
-    table.insert(_G.__lsp_progress_notify_events, {
-      message = message,
-      level = level,
-      opts = opts,
-    })
-
-    return { id = #_G.__lsp_progress_notify_events }
-  end
+  error("lsp-progress-notify.nvim should not require an external notify backend")
 end
 
 vim.opt.runtimepath:append(vim.fn.getcwd())
@@ -65,6 +56,7 @@ assert(
   end),
   "task should be created on begin"
 )
+assert(opened >= 1, "notification window should open on begin")
 
 local snapshot = progress.status()
 local task = snapshot["1:\"token-1\""]
@@ -180,15 +172,8 @@ assert(
   "completed task should be cleaned up"
 )
 
-local events = _G.__lsp_progress_notify_events or {}
-assert(#events >= 3, "notify should have been called multiple times")
-assert(events[1].opts.on_open == on_open, "on_open should be forwarded to notify")
-assert(events[1].opts.on_close == on_close, "on_close should be forwarded to notify")
-
-events[1].opts.on_open()
-events[1].opts.on_close()
-assert(opened == 1, "on_open callback should remain callable")
-assert(closed == 1, "on_close callback should remain callable")
+assert(opened >= 2, "notification windows should open for tracked clients")
+assert(closed >= 2, "notification windows should close after completed tasks are cleaned up")
 
 vim.cmd("LspProgressNotifyDisable")
 assert(progress.is_enabled() == false, "plugin should be disabled")
