@@ -197,20 +197,20 @@ end
 
 local function set_highlights()
   local highlights = {
-    LspProgressNotifyNormal = { fg = "#d8dee9", bg = "#20242a" },
-    LspProgressNotifyBorder = { fg = "#3a414a", bg = "#20242a" },
-    LspProgressNotifyTitle = { fg = "#d8dee9", bg = "#20242a", bold = true },
-    LspProgressNotifyMuted = { fg = "#8f98a3", bg = "#20242a" },
-    LspProgressNotifyDim = { fg = "#707983", bg = "#20242a" },
-    LspProgressNotifyActive = { fg = "#8bd17c", bg = "#20242a" },
-    LspProgressNotifyInfo = { fg = "#7aa2f7", bg = "#20242a" },
-    LspProgressNotifyDone = { fg = "#e5c07b", bg = "#20242a" },
-    LspProgressNotifyBar = { fg = "#8bd17c", bg = "#20242a" },
+    LspProgressNotifyNormal = "NormalFloat",
+    LspProgressNotifyBorder = "FloatBorder",
+    LspProgressNotifyTitle = "Title",
+    LspProgressNotifyMuted = "Comment",
+    LspProgressNotifyDim = "NonText",
+    LspProgressNotifyActive = "DiagnosticOk",
+    LspProgressNotifyInfo = "DiagnosticInfo",
+    LspProgressNotifyDone = "DiagnosticOk",
+    LspProgressNotifyBar = "Special",
+    LspProgressNotifyPercent = "Number",
   }
 
-  for group, options in pairs(highlights) do
-    options.default = true
-    vim.api.nvim_set_hl(0, group, options)
+  for group, link in pairs(highlights) do
+    vim.api.nvim_set_hl(0, group, { default = true, link = link })
   end
 end
 
@@ -386,7 +386,8 @@ local function render_client_lines(title, client_name, tasks, all_done)
     end
 
     local left = icon .. "  " .. truncate(message, math.max(1, text_width))
-    local line = "▌   " .. center_gap(left, percentage, content_width - 2)
+    local body = center_gap(left, percentage, content_width - 2)
+    local line = "▌   " .. body
 
     table.insert(lines, line)
     table.insert(highlights, {
@@ -401,6 +402,17 @@ local function render_client_lines(title, client_name, tasks, all_done)
       start_col = task_icon_start,
       end_col = task_icon_start + #icon,
     })
+    if percentage ~= "" then
+      local percentage_start = string.find(line, percentage, 1, true)
+      if percentage_start then
+        table.insert(highlights, {
+          group = "LspProgressNotifyPercent",
+          line = #lines - 1,
+          start_col = percentage_start - 1,
+          end_col = percentage_start + #percentage - 1,
+        })
+      end
+    end
 
     used_task_lines = used_task_lines + 1
 
