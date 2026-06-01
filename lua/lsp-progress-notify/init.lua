@@ -15,11 +15,18 @@ local defaults = {
     working = "Working…",
   },
   notification = {
-    level = vim.log.levels.INFO,
     ongoing_timeout = false,
     done_timeout = 2000,
-    render = "default",
-    stages = "fade",
+    min_width = 32,
+    width = 44,
+    max_width = 56,
+    max_height = 12,
+    row = 1,
+    col = 2,
+    spacing = 1,
+    border = "rounded",
+    zindex = 50,
+    winblend = 0,
     on_open = nil,
     on_close = nil,
   },
@@ -29,11 +36,14 @@ local state = {
   enabled = false,
   tasks = {},
   client_notifications = {},
+  notification_seq = 0,
   spinner_frame = 1,
   timer = nil,
   augroup = nil,
   commands_created = false,
 }
+
+local namespace = vim.api.nvim_create_namespace("lsp-progress-notify")
 
 local function default_format(_, task)
   local parts = {}
@@ -47,14 +57,6 @@ local function default_format(_, task)
   end
 
   local text = table.concat(parts, " — ")
-
-  if task.percentage then
-    if text ~= "" then
-      text = string.format("%s (%d%%)", text, task.percentage)
-    else
-      text = string.format("%d%%", task.percentage)
-    end
-  end
 
   if text == "" then
     if task.done then
@@ -100,16 +102,6 @@ local function stop_timer()
   end
 end
 
-local function get_notify()
-  local ok, notify = pcall(require, "notify")
-
-  if ok then
-    return notify, true
-  end
-
-  return vim.notify, false
-end
-
 local function active_task_count()
   local count = 0
 
@@ -122,6 +114,312 @@ local function active_task_count()
   return count
 end
 
+local function clamp(value, min, max)
+  if value < min then
+    return min
+  end
+
+  if value > max then
+    return max
+  end
+
+  return value
+end
+
+local function display_width(text)
+  return vim.fn.strdisplaywidth(text)
+end
+
+local function truncate(text, width)
+  if display_width(text) <= width then
+    return text
+  end
+
+  local suffix = "…"
+  local target = width - display_width(suffix)
+  if target <= 0 then
+    return suffix
+  end
+
+  local result = ""
+  local current = 0
+
+  for _, char in ipairs(vim.fn.split(text, "\\zs")) do
+    local char_width = display_width(char)
+    if current + char_width > target then
+      break
+    end
+    result = result .. char
+    current = current + char_width
+  end
+
+  return result .. suffix
+end
+
+local function pad_right(text, width)
+  local padding = width - display_width(text)
+  if padding <= 0 then
+    return text
+  end
+
+  return text .. string.rep(" ", padding)
+end
+
+local function center_gap(left, right, width)
+  left = truncate(left, width)
+  local remaining = width - display_width(left) - display_width(right)
+  if remaining < 1 then
+    return truncate(left, width)
+  end
+
+  return left .. string.rep(" ", remaining) .. right
+end
+
+local function progress_bar(percentage, width)
+  percentage = clamp(percentage or 0, 0, 100)
+
+  local filled = math.floor((width * percentage / 100) + 0.5)
+  if filled <= 0 then
+    return string.rep("─", width)
+  end
+
+  if filled >= width then
+    return string.rep("━", width)
+  end
+
+  return string.rep("━", filled) .. string.rep("─", width - filled)
+end
+
+local function current_spinner_icon()
+  local frames = M.config.icons.spinner
+  return frames[state.spinner_frame]
+end
+
+local function set_highlights()
+  local highlights = {
+    LspProgressNotifyNormal = { fg = "#d8dee9", bg = "#20242a" },
+    LspProgressNotifyBorder = { fg = "#3a414a", bg = "#20242a" },
+    LspProgressNotifyTitle = { fg = "#d8dee9", bg = "#20242a", bold = true },
+    LspProgressNotifyMuted = { fg = "#8f98a3", bg = "#20242a" },
+    LspProgressNotifyDim = { fg = "#707983", bg = "#20242a" },
+    LspProgressNotifyActive = { fg = "#8bd17c", bg = "#20242a" },
+    LspProgressNotifyInfo = { fg = "#7aa2f7", bg = "#20242a" },
+    LspProgressNotifyDone = { fg = "#e5c07b", bg = "#20242a" },
+    LspProgressNotifyBar = { fg = "#8bd17c", bg = "#20242a" },
+  }
+
+  for group, options in pairs(highlights) do
+    options.default = true
+    vim.api.nvim_set_hl(0, group, options)
+  end
+end
+
+local function ensure_notification(client_id)
+  local key = tostring(client_id)
+  local notification = state.client_notifications[key]
+
+  if notification and vim.api.nvim_buf_is_valid(notification.buf) then
+    return notification
+  end
+
+  state.notification_seq = state.notification_seq + 1
+  notification = {
+    buf = vim.api.nvim_create_buf(false, true),
+    win = nil,
+    close_seq = 0,
+    seq = state.notification_seq,
+  }
+
+  vim.bo[notification.buf].buftype = "nofile"
+  vim.bo[notification.buf].bufhidden = "wipe"
+  vim.bo[notification.buf].swapfile = false
+  vim.bo[notification.buf].filetype = "lsp-progress-notify"
+
+  state.client_notifications[key] = notification
+
+  return notification
+end
+
+local function configured_width()
+  local notification = M.config.notification
+  local columns = vim.o.columns
+  local available = math.max(20, columns - (notification.col * 2) - 4)
+  local max_width = math.min(notification.max_width, available)
+
+  return clamp(notification.width, notification.min_width, max_width)
+end
+
+local function window_config(width, height, row)
+  local notification = M.config.notification
+
+  return {
+    relative = "editor",
+    anchor = "NE",
+    row = row,
+    col = math.max(0, vim.o.columns - notification.col),
+    width = width,
+    height = height,
+    style = "minimal",
+    focusable = false,
+    border = notification.border,
+    zindex = notification.zindex,
+  }
+end
+
+local function close_client_notification(client_id)
+  local key = tostring(client_id)
+  local notification = state.client_notifications[key]
+
+  if not notification then
+    return
+  end
+
+  if notification.win and vim.api.nvim_win_is_valid(notification.win) then
+    pcall(vim.api.nvim_win_close, notification.win, true)
+    if M.config.notification.on_close then
+      pcall(M.config.notification.on_close)
+    end
+  end
+
+  if notification.buf and vim.api.nvim_buf_is_valid(notification.buf) then
+    pcall(vim.api.nvim_buf_delete, notification.buf, { force = true })
+  end
+
+  state.client_notifications[key] = nil
+end
+
+local function layout_notifications()
+  local notifications = {}
+
+  for _, notification in pairs(state.client_notifications) do
+    if notification.win and vim.api.nvim_win_is_valid(notification.win) then
+      table.insert(notifications, notification)
+    end
+  end
+
+  table.sort(notifications, function(a, b)
+    return a.seq < b.seq
+  end)
+
+  local row = M.config.notification.row
+  local width = configured_width()
+
+  for _, notification in ipairs(notifications) do
+    local height = vim.api.nvim_win_get_height(notification.win)
+    vim.api.nvim_win_set_config(notification.win, window_config(width, height, row))
+    row = row + height + M.config.notification.spacing + 2
+  end
+end
+
+local function schedule_notification_close(client_id, delay)
+  if not delay or delay == false then
+    return
+  end
+
+  local notification = state.client_notifications[tostring(client_id)]
+  if not notification then
+    return
+  end
+
+  notification.close_seq = notification.close_seq + 1
+  local close_seq = notification.close_seq
+
+  vim.defer_fn(function()
+    local current = state.client_notifications[tostring(client_id)]
+    if current and current.close_seq == close_seq then
+      close_client_notification(client_id)
+      layout_notifications()
+    end
+  end, delay)
+end
+
+local function render_client_lines(title, client_name, tasks, all_done)
+  local width = configured_width()
+  local content_width = width - 2
+  local lines = {}
+  local highlights = {}
+  local spinner = current_spinner_icon()
+  local header_icon = all_done and M.config.icons.done or spinner
+  local strip_end = #"▌"
+  local header_start = #"▌ "
+  local task_icon_start = #"▌   "
+  local bar_start = #"▌     "
+
+  table.insert(lines, "▌ " .. center_gap(header_icon .. "  " .. title, "LSP", content_width))
+  table.insert(highlights, {
+    group = "LspProgressNotifyActive",
+    line = 0,
+    start_col = 0,
+    end_col = strip_end,
+  })
+  table.insert(highlights, {
+    group = "LspProgressNotifyTitle",
+    line = 0,
+    start_col = header_start,
+    end_col = -1,
+  })
+
+  local max_task_lines = math.max(1, M.config.notification.max_height - 1)
+  local used_task_lines = 0
+
+  for index, task in ipairs(tasks) do
+    if used_task_lines >= max_task_lines then
+      local remaining = #tasks - index + 1
+      local overflow = pad_right(string.format("+ %d more task(s)", remaining), content_width)
+      table.insert(lines, "▌ " .. overflow)
+      table.insert(highlights, {
+        group = "LspProgressNotifyMuted",
+        line = #lines - 1,
+        start_col = header_start,
+        end_col = -1,
+      })
+      break
+    end
+
+    local icon = task.done and M.config.icons.done or spinner
+    local percentage = task.percentage and string.format("%d%%", task.percentage) or ""
+    local message = tostring(M.config.format(client_name, task) or "")
+    local text_width = content_width - 4 - display_width(percentage)
+
+    if percentage ~= "" then
+      text_width = text_width - 1
+    end
+
+    local left = icon .. "  " .. truncate(message, math.max(1, text_width))
+    local line = "▌   " .. center_gap(left, percentage, content_width - 2)
+
+    table.insert(lines, line)
+    table.insert(highlights, {
+      group = "LspProgressNotifyMuted",
+      line = #lines - 1,
+      start_col = 0,
+      end_col = strip_end,
+    })
+    table.insert(highlights, {
+      group = task.done and "LspProgressNotifyDone" or "LspProgressNotifyInfo",
+      line = #lines - 1,
+      start_col = task_icon_start,
+      end_col = task_icon_start + #icon,
+    })
+
+    used_task_lines = used_task_lines + 1
+
+    if task.percentage and not task.done and used_task_lines < max_task_lines then
+      local bar_width = content_width - 5
+      table.insert(lines, "▌     " .. progress_bar(task.percentage, bar_width))
+      table.insert(highlights, {
+        group = "LspProgressNotifyBar",
+        line = #lines - 1,
+        start_col = bar_start,
+        end_col = -1,
+      })
+      used_task_lines = used_task_lines + 1
+    end
+  end
+
+  return lines, highlights, width
+end
+
 local function next_spinner_icon()
   local frames = M.config.icons.spinner
   local frame = frames[state.spinner_frame]
@@ -129,11 +427,6 @@ local function next_spinner_icon()
   state.spinner_frame = (state.spinner_frame % #frames) + 1
 
   return frame
-end
-
-local function current_spinner_icon()
-  local frames = M.config.icons.spinner
-  return frames[state.spinner_frame]
 end
 
 local function schedule_cleanup(key, client_id, delay)
@@ -150,7 +443,8 @@ local function schedule_cleanup(key, client_id, delay)
       end
     end
     if not remaining then
-      state.client_notifications[tostring(client_id)] = nil
+      close_client_notification(client_id)
+      layout_notifications()
     end
   end, delay)
 end
@@ -171,51 +465,67 @@ end
 local function show_client(client_id)
   local tasks = get_client_tasks(client_id)
   if #tasks == 0 then
+    close_client_notification(client_id)
+    layout_notifications()
     return
   end
 
-  local notify, is_nvim_notify = get_notify()
   local client = vim.lsp.get_client_by_id(client_id)
   local client_name = client and client.name or string.format("LSP %d", client_id)
 
   local all_done = true
-  local lines = {}
-  local spinner = current_spinner_icon()
   for _, task in ipairs(tasks) do
     if not task.done then
       all_done = false
     end
-    local icon = task.done and M.config.icons.done or spinner
-    local msg = M.config.format(client_name, task)
-    table.insert(lines, icon .. " " .. msg)
   end
 
-  local message = table.concat(lines, "\n")
-  local title = M.config.title(client_name)
-  local icon = all_done and M.config.icons.done or spinner
-  local timeout = all_done and M.config.notification.done_timeout
-    or M.config.notification.ongoing_timeout
-  local existing = state.client_notifications[tostring(client_id)]
+  local title = M.config.title(client_name, tasks[1]) or client_name
+  local lines, highlights, width = render_client_lines(title, client_name, tasks, all_done)
+  local notification = ensure_notification(client_id)
+  local height = #lines
 
-  if is_nvim_notify then
-    state.client_notifications[tostring(client_id)] = notify(message, M.config.notification.level, {
-      title = title,
-      icon = icon,
-      timeout = timeout,
-      replace = existing,
-      render = M.config.notification.render,
-      stages = M.config.notification.stages,
-      on_open = M.config.notification.on_open,
-      on_close = M.config.notification.on_close,
-      hide_from_history = not all_done,
-    })
-    return
+  vim.bo[notification.buf].modifiable = true
+  vim.api.nvim_buf_clear_namespace(notification.buf, namespace, 0, -1)
+  vim.api.nvim_buf_set_lines(notification.buf, 0, -1, false, lines)
+  for _, highlight in ipairs(highlights) do
+    vim.api.nvim_buf_add_highlight(
+      notification.buf,
+      namespace,
+      highlight.group,
+      highlight.line,
+      highlight.start_col,
+      highlight.end_col
+    )
+  end
+  vim.bo[notification.buf].modifiable = false
+
+  if not notification.win or not vim.api.nvim_win_is_valid(notification.win) then
+    notification.win = vim.api.nvim_open_win(
+      notification.buf,
+      false,
+      window_config(width, height, M.config.notification.row)
+    )
+    vim.wo[notification.win].winblend = M.config.notification.winblend
+    vim.wo[notification.win].winhighlight =
+      "Normal:LspProgressNotifyNormal,FloatBorder:LspProgressNotifyBorder"
+
+    if M.config.notification.on_open then
+      pcall(M.config.notification.on_open, notification.win)
+    end
+  else
+    vim.api.nvim_win_set_buf(notification.win, notification.buf)
+    vim.api.nvim_win_set_config(
+      notification.win,
+      window_config(width, height, M.config.notification.row)
+    )
   end
 
-  state.client_notifications[tostring(client_id)] = notify(message, M.config.notification.level, {
-    title = title,
-    timeout = timeout,
-  })
+  layout_notifications()
+
+  if not all_done then
+    schedule_notification_close(client_id, M.config.notification.ongoing_timeout)
+  end
 end
 
 local function ensure_timer()
@@ -389,7 +699,7 @@ local function setup_autocmds()
         handle_progress(client_id, token, value)
       end)
     end,
-    desc = "Show LSP progress through nvim-notify",
+    desc = "Show LSP progress in floating windows",
   })
 
   vim.api.nvim_create_autocmd("LspDetach", {
@@ -416,6 +726,7 @@ function M.enable()
   end
 
   create_commands()
+  set_highlights()
   state.enabled = true
   setup_autocmds()
 end
@@ -429,6 +740,14 @@ function M.disable()
   stop_timer()
   state.tasks = {}
   state.task_seq = 0
+
+  local client_ids = {}
+  for client_id in pairs(state.client_notifications) do
+    table.insert(client_ids, client_id)
+  end
+  for _, client_id in ipairs(client_ids) do
+    close_client_notification(client_id)
+  end
   state.client_notifications = {}
 
   if state.augroup then
@@ -459,6 +778,7 @@ function M.setup(opts)
   ensure_supported_version()
 
   M.config = vim.tbl_deep_extend("force", M.config, opts or {})
+  set_highlights()
   create_commands()
 
   if M.config.enabled then

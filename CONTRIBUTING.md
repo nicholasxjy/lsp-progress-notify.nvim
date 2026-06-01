@@ -6,7 +6,6 @@
 
 要求：
 - Neovim `0.11+`
-- `rcarriga/nvim-notify`
 - 可选：`stylua`
 - 可选：Lua Language Server
 

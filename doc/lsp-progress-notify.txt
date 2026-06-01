@@ -15,8 +15,8 @@ CONTENTS                                                    *lsp-progress-notify
 ==============================================================================
 INTRODUCTION                                            *lsp-progress-notify-introduction*
 
-lsp-progress-notify.nvim shows LSP progress using
-https://github.com/rcarriga/nvim-notify.
+lsp-progress-notify.nvim shows LSP progress using native Neovim floating
+windows.
 
 It is implemented on top of Neovim 0.11+ |LspProgress| autocmds and updates the
 same notification for each progress token across the begin/report/end phases.
@@ -25,7 +25,7 @@ same notification for each progress token across the begin/report/end phases.
 REQUIREMENTS                                            *lsp-progress-notify-requirements*
 
 - Neovim >= 0.11
-- rcarriga/nvim-notify
+No external notification plugin is required.
 
 This plugin does not support Neovim 0.10 or older.
 
@@ -35,20 +35,8 @@ INSTALLATION                                            *lsp-progress-notify-ins
 Example with lazy.nvim: >lua
   {
     "nicholasxjy/lsp-progress-notify.nvim",
-    dependencies = {
-      "rcarriga/nvim-notify",
-    },
     config = function()
       require("lsp-progress-notify").setup()
-    end,
-  }
-<
-
-Optional notify override: >lua
-  {
-    "rcarriga/nvim-notify",
-    config = function()
-      vim.notify = require("notify")
     end,
   }
 <
@@ -79,11 +67,18 @@ Default configuration: >lua
       working = "Working…",
     },
     notification = {
-      level = vim.log.levels.INFO,
       ongoing_timeout = false,
       done_timeout = 2000,
-      render = "default",
-      stages = "fade",
+      min_width = 32,
+      width = 44,
+      max_width = 56,
+      max_height = 12,
+      row = 1,
+      col = 2,
+      spacing = 1,
+      border = "rounded",
+      zindex = 50,
+      winblend = 0,
       on_open = nil,
       on_close = nil,
     },
@@ -105,13 +100,20 @@ Options overview:
   messages.complete                        Fallback completion message.
   messages.detached                        Message used on |LspDetach|.
   messages.working                         Fallback in-progress message.
-  notification.level                       Notify log level.
   notification.ongoing_timeout             Timeout while task is active.
   notification.done_timeout                Timeout after completion.
-  notification.render                      Passed to nvim-notify.
-  notification.stages                      Passed to nvim-notify.
-  notification.on_open                     Open callback passed to nvim-notify.
-  notification.on_close                    Close callback passed to nvim-notify.
+  notification.min_width                   Minimum floating window width.
+  notification.width                       Preferred floating window width.
+  notification.max_width                   Maximum floating window width.
+  notification.max_height                  Maximum rendered content lines.
+  notification.row                         Top offset for the first window.
+  notification.col                         Right offset for windows.
+  notification.spacing                     Lines between stacked windows.
+  notification.border                      Floating window border style.
+  notification.zindex                      Floating window z-index.
+  notification.winblend                    Floating window blend value.
+  notification.on_open                     Open callback for floating windows.
+  notification.on_close                    Close callback for floating windows.
   title(client_name, task)                 Notification title callback.
   format(client_name, task)                Notification body callback.
 
@@ -125,7 +127,7 @@ Run: >vim
 The health check reports:
 
 - whether Neovim is at least 0.11
-- whether `rcarriga/nvim-notify` can be required
+- whether the built-in floating window backend is available
 - whether plugin user commands are registered
 
 ==============================================================================

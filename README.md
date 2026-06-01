@@ -5,7 +5,7 @@
 [![license](https://img.shields.io/github/license/nicholasxjy/lsp-progress-notify.nvim)](./LICENSE)
 [![neovim](https://img.shields.io/badge/Neovim-0.11%2B-57A143?logo=neovim&logoColor=white)](https://neovim.io/)
 
-A Neovim plugin built on top of [rcarriga/nvim-notify](https://github.com/rcarriga/nvim-notify) to display LSP client loading, indexing, and initialization progress in notification windows.
+A Neovim plugin that displays LSP client loading, indexing, and initialization progress in compact floating windows.
 
 It uses Neovim 0.11+'s `LspProgress` autocmd and updates the same notification across the `begin` / `report` / `end` lifecycle, instead of spamming a new popup for every progress event.
 
@@ -15,7 +15,7 @@ It uses Neovim 0.11+'s `LspProgress` autocmd and updates the same notification a
 
 ## Features
 
-- Display LSP progress with `nvim-notify`
+- Display LSP progress with native Neovim floating windows
 - Reuse a single notification for the same task
 - Support concurrent progress from multiple LSP clients
 - Animated spinner support
@@ -26,7 +26,7 @@ It uses Neovim 0.11+'s `LspProgress` autocmd and updates the same notification a
 ## Requirements
 
 - **Neovim 0.11 or later**
-- [rcarriga/nvim-notify](https://github.com/rcarriga/nvim-notify)
+- No external notification plugin is required
 
 > This plugin does **not** support Neovim 0.10 or earlier.
 
@@ -46,22 +46,8 @@ This repository includes:
 ```lua
 {
   "nicholasxjy/lsp-progress-notify.nvim",
-  dependencies = {
-    "rcarriga/nvim-notify",
-  },
   config = function()
     require("lsp-progress-notify").setup()
-  end,
-}
-```
-
-If you also want to route global `vim.notify` calls through `nvim-notify`:
-
-```lua
-{
-  "rcarriga/nvim-notify",
-  config = function()
-    vim.notify = require("notify")
   end,
 }
 ```
@@ -70,11 +56,9 @@ If you also want to route global `vim.notify` calls through `nvim-notify`:
 
 ```lua
 vim.pack.add({
-  "https://github.com/rcarriga/nvim-notify",
   "https://github.com/nicholasxjy/lsp-progress-notify.nvim",
 })
 
-vim.notify = require("notify")
 require("lsp-progress-notify").setup()
 ```
 
@@ -111,11 +95,18 @@ require("lsp-progress-notify").setup({
     working = "Working…",
   },
   notification = {
-    level = vim.log.levels.INFO,
     ongoing_timeout = false,
     done_timeout = 2000,
-    render = "default",
-    stages = "fade",
+    min_width = 32,
+    width = 44,
+    max_width = 56,
+    max_height = 12,
+    row = 1,
+    col = 2,
+    spacing = 1,
+    border = "rounded",
+    zindex = 50,
+    winblend = 0,
     on_open = nil,
     on_close = nil,
   },
@@ -134,14 +125,6 @@ require("lsp-progress-notify").setup({
     end
 
     local text = table.concat(parts, " — ")
-
-    if task.percentage then
-      if text ~= "" then
-        text = string.format("%s (%d%%)", text, task.percentage)
-      else
-        text = string.format("%d%%", task.percentage)
-      end
-    end
 
     if text == "" then
       return task.done and "Completed" or "Working…"
@@ -184,7 +167,7 @@ require("lsp-progress-notify").setup({
     end,
     on_close = function()
       vim.schedule(function()
-        vim.notify("LSP progress closed")
+        print("LSP progress closed")
       end)
     end,
   },
@@ -197,9 +180,6 @@ require("lsp-progress-notify").setup({
 require("lsp-progress-notify").setup({
   format = function(client_name, task)
     local label = task.title or task.message or "LSP"
-    if task.percentage then
-      return string.format("[%s] %s %d%%", client_name, label, task.percentage)
-    end
     return string.format("[%s] %s", client_name, label)
   end,
 })
@@ -233,7 +213,7 @@ The plugin provides a health check:
 It checks:
 
 - whether your Neovim version is `0.11+`
-- whether `nvim-notify` is available
+- whether the built-in floating window backend is available
 - whether the user commands were registered
 
 ## Exported API
@@ -261,8 +241,8 @@ This plugin no longer includes the legacy `$/progress` handler fallback, and use
 
 The plugin tracks each LSP client's progress token:
 
-- `begin`: create a notification
-- `report`: replace the previous notification content
+- `begin`: create or update a floating progress window
+- `report`: update the existing window content
 - `end`: switch the spinner to the done icon, then close after `done_timeout`
 
 So language servers such as `lua_ls`, `rust_analyzer`, `tsserver`, and `gopls` that report work progress can show their loading state directly.

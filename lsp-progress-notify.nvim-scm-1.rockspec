@@ -4,7 +4,7 @@ source = {
   url = "git+https://github.com/nicholasxjy/lsp-progress-notify.nvim",
 }
 description = {
-  summary = "LSP progress notifications for Neovim using nvim-notify",
+  summary = "Native floating LSP progress notifications for Neovim",
   homepage = "https://github.com/nicholasxjy/lsp-progress-notify.nvim",
   license = "MIT",
 }
