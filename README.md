@@ -11,7 +11,7 @@ It uses Neovim 0.11+'s `LspProgress` autocmd and updates the same notification a
 
 ## Demo
 
-![demo](./assets/demo.gif)
+![demo](./assets/demo1.png)
 
 ## Features
 
